@@ -1,0 +1,117 @@
+name: Simple CI Pipeline
+
+  
+
+on:
+
+  push:
+
+    branches:
+
+      - main
+
+    paths:
+
+      - 'sample.txt'
+
+      - '.github/workflows/simple-ci.yml'
+
+  workflow_dispatch:
+
+  
+
+permissions:
+
+  contents: read
+
+  
+
+jobs:
+
+  validate:
+
+    name: Validate repository content
+
+    runs-on: ubuntu-latest
+
+  
+
+    steps:
+
+      - name: Checkout repository
+
+        uses: actions/checkout@v4
+
+  
+
+      - name: Display repository files
+
+        run: ls -la
+
+  
+
+      - name: Validate sample file
+
+        run: |
+
+          if [ ! -f sample.txt ]; then
+
+            echo "Validation failed: sample.txt does not exist"
+
+            exit 1
+
+          fi
+
+  
+
+          if ! grep -q "GitHub Actions POC" sample.txt; then
+
+            echo "Validation failed: expected content was not found"
+
+            exit 1
+
+          fi
+
+  
+
+          echo "Validation passed"
+
+  
+
+      - name: Create POC evidence
+
+        run: |
+
+          mkdir -p evidence
+
+          {
+
+            echo "Workflow: ${{ github.workflow }}"
+
+            echo "Repository: ${{ github.repository }}"
+
+            echo "Commit: ${{ github.sha }}"
+
+            echo "Reference: ${{ github.ref }}"
+
+            echo "Run number: ${{ github.run_number }}"
+
+            echo "Status: Validation completed"
+
+          } > evidence/poc-result.txt
+
+  
+
+      - name: Upload POC evidence
+
+        uses: actions/upload-artifact@v4
+
+        with:
+
+          name: github-actions-poc-evidence
+
+          path: evidence/poc-result.txt
+
+          if-no-files-found: error
+
+          retention-days: 7
