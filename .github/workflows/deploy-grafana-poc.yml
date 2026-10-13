@@ -1,0 +1,188 @@
+name: Deploy Grafana Image POC
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Existing Grafana tag in ACR"
+        required: true
+        default: "13.0.2"
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: grafana-chs-dev-wus2
+  cancel-in-progress: false
+
+jobs:
+  deploy-grafana:
+    name: Deploy Grafana Image
+    runs-on: ubuntu-latest
+
+    environment: chs-dev-wus2
+
+    env:
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      GRAFANA_CONTAINER_APP: ${{ vars.GRAFANA_CONTAINER_APP }}
+      ACR_NAME: ${{ vars.ACR_NAME }}
+      GRAFANA_IMAGE_REPOSITORY: ${{ vars.GRAFANA_IMAGE_REPOSITORY }}
+      IMAGE_TAG: ${{ inputs.image_tag }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Azure using GitHub OIDC
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Validate required values
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$AZURE_RESOURCE_GROUP" ]]; then
+            echo "::error::AZURE_RESOURCE_GROUP is empty."
+            exit 1
+          fi
+
+          if [[ -z "$GRAFANA_CONTAINER_APP" ]]; then
+            echo "::error::GRAFANA_CONTAINER_APP is empty."
+            exit 1
+          fi
+
+          if [[ -z "$ACR_NAME" ]]; then
+            echo "::error::ACR_NAME is empty."
+            exit 1
+          fi
+
+          if [[ -z "$GRAFANA_IMAGE_REPOSITORY" ]]; then
+            echo "::error::GRAFANA_IMAGE_REPOSITORY is empty."
+            exit 1
+          fi
+
+          if [[ -z "$IMAGE_TAG" ]]; then
+            echo "::error::IMAGE_TAG is empty."
+            exit 1
+          fi
+
+          echo "Required values are available."
+
+      - name: Confirm Azure context
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          az account show \
+            --query "{
+              subscriptionName:name,
+              subscriptionId:id,
+              tenantId:tenantId
+            }" \
+            --output table
+
+      - name: Capture current Grafana deployment
+        id: current
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_image=$(az containerapp show \
+            --name "$GRAFANA_CONTAINER_APP" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query "properties.template.containers[0].image" \
+            --output tsv)
+
+          current_revision=$(az containerapp show \
+            --name "$GRAFANA_CONTAINER_APP" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query "properties.latestRevisionName" \
+            --output tsv)
+
+          echo "current_image=$current_image" >> "$GITHUB_OUTPUT"
+          echo "current_revision=$current_revision" >> "$GITHUB_OUTPUT"
+
+          echo "Current image: $current_image"
+          echo "Current revision: $current_revision"
+
+      - name: Deploy Grafana image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          target_image="$ACR_NAME.azurecr.io/$GRAFANA_IMAGE_REPOSITORY:$IMAGE_TAG"
+
+          echo "Deploying image: $target_image"
+
+          az containerapp update \
+            --name "$GRAFANA_CONTAINER_APP" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --image "$target_image" \
+            --output none
+
+          echo "Grafana image update completed."
+
+      - name: Validate Grafana deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          expected_image="$ACR_NAME.azurecr.io/$GRAFANA_IMAGE_REPOSITORY:$IMAGE_TAG"
+
+          deployed_image=$(az containerapp show \
+            --name "$GRAFANA_CONTAINER_APP" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query "properties.template.containers[0].image" \
+            --output tsv)
+
+          latest_revision=$(az containerapp show \
+            --name "$GRAFANA_CONTAINER_APP" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query "properties.latestRevisionName" \
+            --output tsv)
+
+          provisioning_state=$(az containerapp show \
+            --name "$GRAFANA_CONTAINER_APP" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query "properties.provisioningState" \
+            --output tsv)
+
+          echo "Expected image: $expected_image"
+          echo "Deployed image: $deployed_image"
+          echo "Latest revision: $latest_revision"
+          echo "Provisioning state: $provisioning_state"
+
+          if [[ "$deployed_image" != "$expected_image" ]]; then
+            echo "::error::Deployed image does not match the requested image."
+            exit 1
+          fi
+
+          if [[ "$provisioning_state" != "Succeeded" ]]; then
+            echo "::error::Provisioning state is $provisioning_state."
+            exit 1
+          fi
+
+          echo "Grafana deployment validated successfully."
+
+      - name: Create deployment summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Grafana image deployment POC"
+            echo ""
+            echo "| Property | Value |"
+            echo "|---|---|"
+            echo "| GitHub Environment | chs-dev-wus2 |"
+            echo "| Resource group | $AZURE_RESOURCE_GROUP |"
+            echo "| Container App | $GRAFANA_CONTAINER_APP |"
+            echo "| Requested image | $ACR_NAME.azurecr.io/$GRAFANA_IMAGE_REPOSITORY:$IMAGE_TAG |"
+            echo "| Previous image | ${{ steps.current.outputs.current_image }} |"
+            echo "| Previous revision | ${{ steps.current.outputs.current_revision }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
