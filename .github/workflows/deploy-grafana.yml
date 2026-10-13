@@ -1,39 +1,28 @@
 name: Deploy Grafana DEV to QA
 
 on:
-
   workflow_dispatch:
-
     inputs:
-
       image_tag:
         description: "Grafana image tag"
         required: true
         default: "13.0.2"
         type: string
 
-
 permissions:
   id-token: write
   contents: read
-
 
 jobs:
 
   deploy-dev:
 
-    name: Deploy Grafana DEV
+    name: Deploy DEV
 
     uses: HarinarendraS/github-actions-templates/.github/workflows/reusable-containerapp-deploy.yml@v1
 
     with:
-
       environment: chs-dev-wus2
-
-      image_repository: grafana/grafana-oss
-
-      container_app_variable: ca-chs-grafana-dev-wus2
-
       image_tag: ${{ inputs.image_tag }}
 
     secrets: inherit
@@ -41,20 +30,14 @@ jobs:
 
   deploy-qa:
 
-    name: Deploy Grafana QA
+    name: Deploy QA
 
     needs: deploy-dev
 
     uses: HarinarendraS/github-actions-templates/.github/workflows/reusable-containerapp-deploy.yml@v1
 
     with:
-
       environment: chs-qa-wus2
-
-      image_repository: grafana/grafana-oss
-
-      container_app_variable: ca-chs-grafana-qa-wus2
-
       image_tag: ${{ inputs.image_tag }}
 
     secrets: inherit
