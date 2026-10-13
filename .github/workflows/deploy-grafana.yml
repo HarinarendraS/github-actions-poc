@@ -28,16 +28,16 @@ jobs:
     secrets: inherit
 
 
-  deploy-qa:
+  # deploy-qa:
 
-    name: Deploy QA
+  #   name: Deploy QA
 
-    needs: deploy-dev
+  #   needs: deploy-dev
 
-    uses: HarinarendraS/github-actions-templates/.github/workflows/reusable-containerapp-deploy.yml@v1
+  #   uses: HarinarendraS/github-actions-templates/.github/workflows/reusable-containerapp-deploy.yml@v1
 
-    with:
-      environment: chs-qa-wus2
-      image_tag: ${{ inputs.image_tag }}
+  #   with:
+  #     environment: chs-qa-wus2
+  #     image_tag: ${{ inputs.image_tag }}
 
-    secrets: inherit
+  #   secrets: inherit
