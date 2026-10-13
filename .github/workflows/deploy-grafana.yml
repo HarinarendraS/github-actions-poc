@@ -1,0 +1,55 @@
+name: Deploy Grafana DEV to QA
+
+on:
+
+  workflow_dispatch:
+
+    inputs:
+
+      image_tag:
+        description: "Grafana image tag"
+        required: true
+        default: "13.0.2"
+        type: string
+
+
+jobs:
+
+  # ============================================
+  # DEV
+  # ============================================
+
+  deploy-dev:
+
+    name: Deploy DEV
+
+    uses: ./.github/workflows/reusable-containerapp-deploy.yml
+
+    with:
+
+      environment: chs-dev-wus2
+
+      image_tag: ${{ inputs.image_tag }}
+
+    secrets: inherit
+
+
+  # # ============================================
+  # # QA
+  # # ============================================
+
+  # deploy-qa:
+
+  #   name: Deploy QA
+
+  #   needs: deploy-dev
+
+  #   uses: ./.github/workflows/reusable-containerapp-deploy.yml
+
+  #   with:
+
+  #     environment: chs-qa-wus2
+
+  #     image_tag: ${{ inputs.image_tag }}
+
+  #   secrets: inherit
