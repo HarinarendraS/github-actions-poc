@@ -19,7 +19,7 @@ jobs:
 
     name: Deploy DEV
 
-    uses: HarinarendraS/github-actions-templates/.github/workflows/reusable-containerapp-deploy.yml@v1
+    uses: HarinarendraS/github-actions-templates/.github/workflows/reusable-containerapp-deploy.yml@main
 
     with:
       environment: chs-dev-wus2
