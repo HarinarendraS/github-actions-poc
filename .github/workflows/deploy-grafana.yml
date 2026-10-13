@@ -12,6 +12,7 @@ on:
         default: "13.0.2"
         type: string
 
+
 permissions:
   id-token: write
   contents: read
@@ -19,41 +20,41 @@ permissions:
 
 jobs:
 
-  # ============================================
-  # DEV
-  # ============================================
-
   deploy-dev:
 
-    name: Deploy DEV
+    name: Deploy Grafana DEV
 
-    uses: ./.github/workflows/reusable-containerapp-deploy.yml
+    uses: HarinarendraS/github-actions-templates/.github/workflows/reusable-containerapp-deploy.yml@v1
 
     with:
 
       environment: chs-dev-wus2
+
+      image_repository: grafana/grafana-oss
+
+      container_app_variable: ca-chs-grafana-dev-wus2
 
       image_tag: ${{ inputs.image_tag }}
 
     secrets: inherit
 
 
-  # # ============================================
-  # # QA
-  # # ============================================
+  deploy-qa:
 
-  # deploy-qa:
+    name: Deploy Grafana QA
 
-  #   name: Deploy QA
+    needs: deploy-dev
 
-  #   needs: deploy-dev
+    uses: HarinarendraS/github-actions-templates/.github/workflows/reusable-containerapp-deploy.yml@v1
 
-  #   uses: ./.github/workflows/reusable-containerapp-deploy.yml
+    with:
 
-  #   with:
+      environment: chs-qa-wus2
 
-  #     environment: chs-qa-wus2
+      image_repository: grafana/grafana-oss
 
-  #     image_tag: ${{ inputs.image_tag }}
+      container_app_variable: ca-chs-grafana-qa-wus2
 
-  #   secrets: inherit
+      image_tag: ${{ inputs.image_tag }}
+
+    secrets: inherit
