@@ -23,6 +23,7 @@ jobs:
 
     with:
       environment: chs-dev-wus2
+      runner_label: chs-dev-runner
       image_tag: ${{ inputs.image_tag }}
 
     secrets: inherit
